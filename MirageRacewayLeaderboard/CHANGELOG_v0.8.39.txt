@@ -1,0 +1,6 @@
+Mirage Raceway Leaderboard v0.8.39
+- Replaced custom minimap launcher artwork with the standard WoW riding icon (Ability_Mount_RidingHorse).
+- Kept minimap border, dragging, saved position and click actions unchanged.
+- Updated settings window version label.
+- Countdown bitmap scaling, existing Glow Pulse animation and Enable Countdown setting are unchanged.
+- Rocket Dodged and Jump Failed logic unchanged.

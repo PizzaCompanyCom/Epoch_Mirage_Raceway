@@ -1,0 +1,7 @@
+Mirage Raceway Leaderboard v0.8.29 — Sequential Finish & Personal Best FX
+
+- Finish FX now triggered by the race tracker after the result is recorded.
+- First/Second/Third/Finish banner displays first; New Personal Best follows after its full duration plus 0.3 seconds.
+- No stale history-based false personal record banners.
+- Only one record banner is queued for each completed race.
+- Existing Animated FX settings, sounds, and all other features retained.

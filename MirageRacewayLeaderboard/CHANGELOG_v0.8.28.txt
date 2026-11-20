@@ -1,0 +1,7 @@
+v0.8.28 - Animated FX Only / Countdown Scale Fix
+- Removed Racing FX and Illustrated FX themes and their dedicated textures.
+- Animated FX is the sole theme; all other visual effect settings remain available.
+- Migrates previous visual theme settings to Animated FX automatically.
+- Countdown uses a supported 48-point font and scales the digit directly.
+- Personal Best, Driver License and Master/Client configuration unchanged.
+- Jump Failed automatic detection remains disabled.

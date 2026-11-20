@@ -1,0 +1,4 @@
+v0.8.37 - Countdown Scale Fix 2
+- Fixed 48pt countdown digit font with 100-300% dedicated parent scaling and subtle pulse.
+- Added GetStringHeight/GetStringWidth diagnostic output.
+- Preserved Spell Inspector and SavedVariables.

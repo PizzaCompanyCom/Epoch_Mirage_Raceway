@@ -1,0 +1,6 @@
+Mirage Raceway Leaderboard v1.0
+- Minimap icon replaced with supplied INV_Gizmo_Pipe_02 artwork.
+- New circular 64x64 TGA with transparent corners.
+- Icon shifted 2 UI units right relative to v0.8.41 (-13 -> -11).
+- Version updated to 1.0 in TOC and settings header.
+- All other features unchanged.

@@ -1,0 +1,4 @@
+v0.8.38 - Countdown Bitmap Scale Fix
+- Replaced visible countdown glyphs with 1-5 TGA textures.
+- Scale 100-300% changes texture dimensions directly, retaining pulse.
+- Added bitmap texture diagnostics. Other gameplay modules unchanged.

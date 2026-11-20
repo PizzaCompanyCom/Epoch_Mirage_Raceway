@@ -1,0 +1,4 @@
+v0.8.30 - Countdown Scale compatibility hotfix
+- Fixed Lua error at countdown update: FontString:SetScale is unavailable in WoW 3.3.5a.
+- Countdown Scale now scales the digit parent Frame.
+- No changes to race results, FX queue, synchronization settings, or Personal Best.

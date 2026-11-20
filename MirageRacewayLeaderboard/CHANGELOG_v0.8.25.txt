@@ -1,0 +1,7 @@
+v0.8.25 - Race ownership and HUD diagnostics
+- Ignore global prestart/start announcements unless the player occupies a Rocket Car.
+- Enlarge RACE TIME digits; PERSONAL BEST unchanged.
+- Countdown uses large font and existing Settings scale.
+- JUMP FAILED moved to lower debuff lane; recognize DAMAGE_SHIELD_MISSED for Jump 87516 (provisional; may also occur on successful jumps).
+- OIL SLOWDOWN requires a real Tar Puddle debuff on the local vehicle.
+- ROCKET DODGED unchanged.

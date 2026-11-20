@@ -1,0 +1,5 @@
+v0.8.24
+- Raised PERSONAL BEST readout by 15 UI pixels (HUD local coordinates).
+- Added themed JUMP FAILED banner for Racing / Illustrated / Animated FX and /mrl fx jumpfailed test.
+- Auto detection only on explicit SPELL_CAST_FAILED for Jump ID 87516 targeting own vehicle; SPELL_DAMAGE_SHIELD_MISSED is intentionally ignored to avoid false positives.
+- Existing banner positions and Rocket Dodged unchanged.

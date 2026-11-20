@@ -1,0 +1,4 @@
+Mirage Raceway Leaderboard v0.8.40
+- Changed launcher icon to the standard WoW Rocket Boots icon (INV_Gizmo_RocketBoot_01).
+- Centered icon in minimap border and cropped icon edges to remove square appearance.
+- Kept launcher movement, click actions, and all existing addon functionality.

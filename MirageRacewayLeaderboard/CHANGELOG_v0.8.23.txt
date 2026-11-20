@@ -1,0 +1,6 @@
+Mirage Raceway Leaderboard v0.8.23
+- Oil Slowdown now uses confirmed spell ID 87521 applied to own vehicle; duplicate events throttled.
+- Rocket Hit uses confirmed spell ID 87509 applied to own vehicle.
+- Rocket Dodged detection and banner unchanged.
+- Leaderboard cloth restored for records without faction metadata (neutral cloth); own player faction inferred when missing.
+- Debuff FX positions unchanged.

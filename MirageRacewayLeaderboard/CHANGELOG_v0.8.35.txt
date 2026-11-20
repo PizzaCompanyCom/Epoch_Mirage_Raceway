@@ -1,0 +1,6 @@
+v0.8.35 - Persistent logging diagnostics
+- Initialize Inspector SavedVariables at module load.
+- Show loaded module version and storage status in /mrl inspect status.
+- Announce module readiness at login.
+- Record manual snapshot marker when capture is active.
+- Preserve all existing race features.

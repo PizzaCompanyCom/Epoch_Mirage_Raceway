@@ -1,0 +1,1 @@
+v0.7.1: Correct aspect ratio of background via center crop; checkerboard window frame; Animated FX now uses Speed Freeks banner art and independent per-event moving object sprites. Other themes unchanged. Test /mrl fx demo.

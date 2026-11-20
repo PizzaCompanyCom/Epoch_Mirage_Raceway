@@ -1,0 +1,5 @@
+v0.8.0 Faction Graphics Fix
+- Restored circular gnome launcher art (launch.tga) instead of temporary question mark.
+- Explicit .tga file paths for Horde/Alliance row cloth and goblin/gnome badges, including My Statistics.
+- Kept test commands, all effects themes, and texture diagnostics.
+- IMPORTANT: Exit WoW completely and launch again after installing new textures. /reload alone may show blank assets.

@@ -1,0 +1,14 @@
+## Interface: 30300
+## Title: Mirage Raceway Leaderboard
+## Notes: Race HUD, personal bests and Speed Freeks-style visual effects for Epoch Reborn.
+## Author: Belerda
+## Version: 1.1.17
+## SavedVariables: MirageRacewayDB, MirageRacewayInspectorLogs
+MirageRacewaySync.lua
+MirageRacewayMasterUI.lua
+MirageRacewayLeaderboard.lua
+MirageRacewaySpellDebug.lua
+MirageRacewaySpellInspector.lua
+MirageRacewayEffects.lua
+MirageRacewayDebuffs.lua
+MirageRacewayLeaderboardUI.lua

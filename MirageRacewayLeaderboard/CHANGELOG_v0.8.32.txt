@@ -1,0 +1,1 @@
+v0.8.32: Added read-only Spell Inspector (/mrl inspect) for spell IDs, active auras, and filtered combat log events with missType. Existing features unchanged.

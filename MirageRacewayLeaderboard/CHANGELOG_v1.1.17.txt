@@ -1,0 +1,9 @@
+Mirage Raceway Best Time v1.1.17 — Release
+- Rocket Effects labels the existing combined green/red rocket effect toggle.
+- Debuff Effects is the single toggle for supported debuff animations; previously disabled effects stay disabled.
+- Debug Messages defaults to OFF on new installs; existing saved preferences are respected.
+- Minimap launcher uses MEDIUM strata below addon dialog windows.
+- Settings header reads installed version from TOC metadata.
+- Contacts displays author Belerda, GitHub URL, and selectable link with Copy GitHub Link button (Ctrl+C).
+- No new languages added.
+Based on v1.1.16. Race detection, synchronization, and leaderboard data logic unchanged.

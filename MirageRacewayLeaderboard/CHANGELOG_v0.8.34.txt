@@ -1,0 +1,6 @@
+v0.8.34 - Persistent Spell Inspector Logs
+- Stores up to 2000 event lines per session in SavedVariables.
+- Keeps up to 8 sessions; /mrl inspect save closes session.
+- /reload or logout writes data to disk.
+- /mrl inspect clear clears stored sessions.
+- No changes to race logic or FX.

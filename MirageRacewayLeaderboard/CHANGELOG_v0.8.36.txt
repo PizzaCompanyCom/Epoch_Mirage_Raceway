@@ -1,0 +1,4 @@
+Mirage Raceway Leaderboard v0.8.36
+- Countdown digits now resize using font size rather than parent-frame scaling.
+- Slider affects only the digits; GET READY! caption remains unchanged.
+- Countdown Diagnostics and Spell Inspector persistence retained.
