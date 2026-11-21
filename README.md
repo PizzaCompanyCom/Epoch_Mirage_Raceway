@@ -1,4 +1,5 @@
 # Addon Mirage Raceway!
+Version 1.1.18
 Mirage Raceway Best Time is a World of Warcraft addon for Epoch Reborn that automatically tracks racing records at Mirage Raceway.
 
 <img width="200px" src="Screenshots/1.jpg" alt="описание"/> <img width="200px" src="Screenshots/2.jpg" alt="описание"/>
