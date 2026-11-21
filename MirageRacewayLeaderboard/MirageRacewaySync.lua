@@ -3,6 +3,24 @@
 local S={cache={},subscribers={},pending={},selected=nil,seq=0,active=nil,elapsed=0,heartbeat=0,versionCheck=0,masterOnline=false,session=tostring(math.floor(GetTime()*1000)),requests={},viewOpen=false}
 MirageRacewaySync=S
 local PREFIX='MRBT11'
+-- Suppress only the expected offline-whisper error from our own Master probes.
+-- Do not suppress unrelated server/system messages or messages from other addons.
+local lastMasterWhisper=-1000
+local masterOfflineUntil=0
+local function masterUnavailable(message)
+ local m=string.lower(message or '')
+ return m:find('belerda',1,true) and (m:find('no player named',1,true) or m:find('not online',1,true) or m:find('not found',1,true) or m:find('currently playing',1,true))
+end
+if type(ChatFrame_AddMessageEventFilter)=='function' then
+ ChatFrame_AddMessageEventFilter('CHAT_MSG_SYSTEM',function(_,_,message)
+  if GetTime()-lastMasterWhisper<12 and masterUnavailable(message) then
+   masterOfflineUntil=GetTime()+300
+   S.masterOnline=false
+   return true
+  end
+  return false
+ end)
+end
 local function DB() return MirageRacewayDB or {} end
 local function name() return UnitName('player') or '' end
 local function master() return string.lower(name())=='belerda' end
@@ -23,6 +41,11 @@ end
 S.ServerYear=serverYear
 local function send(msg,to)
  if type(SendAddonMessage)~='function' then return end
+ if not to then
+  -- Queue local results while Master is offline; retry discovery at a low rate.
+  if GetTime()<masterOfflineUntil and msg~='HELLO' then return end
+  lastMasterWhisper=GetTime()
+ end
  SendAddonMessage(PREFIX,msg,'WHISPER',to or 'Belerda')
 end
 local function fields(msg)
@@ -123,7 +146,7 @@ end
 local function onClient(sender,a)
  if string.lower(sender or '')~='belerda' then return end
  local op=a[1]
- if op=='HELLOACK' then S.masterOnline=true;S.masterSession=a[3];S:Resync()
+ if op=='HELLOACK' then masterOfflineUntil=0;S.masterOnline=true;S.masterSession=a[3];S:Resync()
  elseif op=='ACK' then
   local p=personal();local token,status,sy,gen=a[2],a[3],tonumber(a[4]),tonumber(a[5]);local pending=p.pending
   if pending and pending.id==token and pending.year==sy and pending.generation==gen then
@@ -261,7 +284,7 @@ update:SetScript('OnUpdate',function(self,dt)
    else S.active=nil;notify() end
   end
  end
- if S.heartbeat>=60 then S.heartbeat=0;if not master() then send('HELLO') end end
+ if S.heartbeat>=300 then S.heartbeat=0;if not master() then send('HELLO') end end
  if S.versionCheck>=300 then S.versionCheck=0;if S.viewOpen and S.selected==y then S:Request(y,true) end end
  S.elapsed=0
 end)

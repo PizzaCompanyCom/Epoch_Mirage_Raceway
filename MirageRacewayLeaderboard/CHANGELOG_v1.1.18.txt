@@ -1,0 +1,9 @@
+Mirage Raceway Best Time v1.1.18
+- Reduce Master discovery probes from 60 to 300 seconds.
+- Suppress only the server's offline Belerda whisper error immediately following this addon's own Master send.
+- Pause normal outbound Master messages temporarily when offline is detected; preserve pending personal data.
+- Make the fallback minimap launcher a named child of Minimap for legacy icon collectors.
+- If LibDataBroker-1.1 and LibDBIcon-1.0 are already available, register one broker launcher and hide the fallback to avoid duplicates.
+- No changes to race timing, stored leaderboards, or language support.
+
+Note: Broker libraries are optional and are not bundled. Compatibility with every third-party icon sorter cannot be guaranteed.

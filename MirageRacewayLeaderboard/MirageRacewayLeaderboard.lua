@@ -256,8 +256,8 @@ local function createUI()
  digit:Hide()
  countdownFX.digit=digit;countdownFX.digitFrame=digitFrame;countdownFX.digitTexture=digitTexture;countdownFX.glow=glow;countdownFX:Hide()
  -- Standalone movable launcher. Reset legacy offsets that could leave the old minimap icon off-screen.
- minimap=CreateFrame('Button','MirageRacewayMinimapButton',UIParent)
- minimap:SetWidth(34);minimap:SetHeight(34);minimap:SetFrameStrata('MEDIUM');minimap:SetFrameLevel(12)
+ minimap=CreateFrame('Button','MirageRacewayMinimapButton',Minimap)
+ minimap:SetWidth(34);minimap:SetHeight(34);minimap:SetFrameStrata('MEDIUM');minimap:SetFrameLevel(Minimap:GetFrameLevel()+3)
  minimap:SetClampedToScreen(true);minimap:SetMovable(true);minimap:EnableMouse(true)
  minimap:RegisterForClicks('LeftButtonUp','RightButtonUp');minimap:RegisterForDrag('LeftButton')
  local icon=minimap:CreateTexture(nil,'OVERLAY')
@@ -285,6 +285,23 @@ local function createUI()
  end)
  minimap:SetScript('OnLeave',function()GameTooltip:Hide()end)
  minimap:Show()
+ -- LibDataBroker / LibDBIcon bridge: use an existing compatible library when present.
+ -- The standard named Minimap child above remains the fallback for legacy button bags.
+ local ldb=LibStub and LibStub('LibDataBroker-1.1',true)
+ local dbicon=LibStub and LibStub('LibDBIcon-1.0',true)
+ if ldb and dbicon then
+  local broker=ldb:NewDataObject('MirageRacewayBestTime',{
+   type='launcher',text='Mirage Raceway Best Time',
+   icon='Interface\\AddOns\\MirageRacewayLeaderboard\\Textures\\minimap_pipe_round.tga',
+   OnClick=function(_,button) local fn=minimap:GetScript('OnClick');if fn then fn(minimap,button) end end,
+   OnTooltipShow=function(t) t:AddLine('Mirage Raceway Best Time');t:AddLine('Left: Leaderboard | Right: Settings',1,1,1) end
+  })
+  if broker then
+   db.minimapIcon=db.minimapIcon or {hide=false}
+   dbicon:Register('MirageRacewayBestTime',broker,db.minimapIcon)
+   minimap:Hide()
+  end
+ end
  options=CreateFrame('Frame','MirageRacewayOptions',UIParent); options:SetWidth(435); options:SetHeight(870); options:SetPoint('CENTER'); options:SetFrameStrata('FULLSCREEN_DIALOG'); options:SetFrameLevel(100); options:EnableMouse(true); options:SetMovable(true); options:RegisterForDrag('LeftButton')
  options:SetScript('OnShow',function(self) self:SetFrameStrata('FULLSCREEN_DIALOG'); self:SetFrameLevel(100); self:Raise() end)
  options:SetScript('OnDragStart',function(self) self:StartMoving() end); options:SetScript('OnDragStop',function(self) self:StopMovingOrSizing() end)
