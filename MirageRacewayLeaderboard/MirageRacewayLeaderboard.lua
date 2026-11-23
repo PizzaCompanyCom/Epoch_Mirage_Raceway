@@ -1,7 +1,7 @@
 -- Mirage Raceway Leaderboard v0.1.0 / WoW 3.3.5a
 local ADDON = ...
 local f = CreateFrame('Frame')
-local defaults = {hud=true,boost=true,rockets=true,victory=true,sounds=true,personal=true,scale=.56,opacity=.9,debug=false,visualTheme="animated",animationQuality="full",particleEffects=true,glowFlicker=true,cleanEdges=true,countdownEnabled=true,countdownScale=2.5,debuffAnimations=true,syncMode="client"}
+local defaults = {hud=true,boost=true,rockets=true,victory=true,sounds=true,personal=true,scale=.56,opacity=.9,debug=false,updateAlerts=true,visualTheme="animated",animationQuality="full",particleEffects=true,glowFlicker=true,cleanEdges=true,countdownEnabled=true,countdownScale=2.5,debuffAnimations=true,syncMode="client"}
 local db, raceStart, running, finished, lastStart, lastFinish, lastBonus, countdownEnd
 local hud, timerText, statusText, bestText, notice, minimap, options, countdownFX
 local announcedCountdownEnd=nil
@@ -316,6 +316,19 @@ local function createUI()
   cb:SetScript('OnClick',function(self) db[key]=self:GetChecked() and true or false; if key=='hud' then if db.hud then hud:Show() else hud:Hide() end end; if key=='personal' then if db.personal then bestText:Show() else bestText:Hide() end end end)
   options['cb_'..key]=cb
  end
+ local updates=CreateFrame('CheckButton',nil,options,'UICheckButtonTemplate')
+ updates:SetPoint('TOPLEFT',options,'TOPLEFT',235,-47-6*30)
+ local updatesLabel=updates:CreateFontString(nil,'OVERLAY','GameFontHighlight')
+ updatesLabel:SetPoint('LEFT',updates,'RIGHT',3,0);updatesLabel:SetText('Update Alerts')
+ updates:SetScript('OnClick',function(self) db.updateAlerts=self:GetChecked() and true or false end)
+ options.cb_updateAlerts=updates
+ updates:SetScript('OnEnter',function(self)
+  GameTooltip:SetOwner(self,'ANCHOR_RIGHT')
+  GameTooltip:AddLine('Addon Version Alerts',1,.85,.3)
+  GameTooltip:AddLine('Detects newer versions installed by other players in your guild or group. Does not check GitHub directly.',1,1,1,true)
+  GameTooltip:Show()
+ end)
+ updates:SetScript('OnLeave',function()GameTooltip:Hide()end)
  local function slider(label,y,min,max,step,key,display)
   local s=CreateFrame('Slider','MirageRacewaySlider'..key,options,'OptionsSliderTemplate'); s:SetWidth(260); s:SetHeight(17); s:SetPoint('TOP',0,y); s:SetMinMaxValues(min,max); s:SetValueStep(step)
   getglobal(s:GetName()..'Low'):SetText(tostring(min)); getglobal(s:GetName()..'High'):SetText(tostring(max))

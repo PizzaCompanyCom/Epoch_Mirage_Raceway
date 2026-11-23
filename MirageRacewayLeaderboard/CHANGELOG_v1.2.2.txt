@@ -1,0 +1,1 @@
+v1.2.2 RC3: Tournament search/name/gold inputs use explicit visible backgrounds and elevated frame levels. Master warns once per season if only an all-time PB exists without a current-season PB; historical records are not silently reclassified.

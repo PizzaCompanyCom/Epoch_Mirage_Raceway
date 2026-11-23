@@ -20,7 +20,7 @@ local function backdrop(frame,r,g,b,a)
  frame:SetBackdropColor(r or .05,g or .06,b or .08,a or .86)
  frame:SetBackdropBorderColor(.56,.43,.23,.95)
 end
-local icons={['Best Time']='INV_Misc_PocketWatch_01',Leaderboard='INV_Misc_Note_01',['My Statistics']='INV_Misc_PocketWatch_01',Settings='INV_Gizmo_02',Refresh='Ability_Rogue_Sprint',Contacts='INV_Letter_15',Season='INV_Misc_PocketWatch_01',['Reset Season Best']='Ability_Rogue_FeignDeath',['Master Management']='INV_Misc_Note_01',Rules='INV_Misc_Book_09'}
+local icons={Tournament='INV_Misc_Coin_01',['Best Time']='INV_Misc_PocketWatch_01',Leaderboard='INV_Misc_Note_01',['My Statistics']='INV_Misc_PocketWatch_01',Settings='INV_Gizmo_02',Refresh='Ability_Rogue_Sprint',Contacts='INV_Letter_15',Season='INV_Misc_PocketWatch_01',['Reset Season Best']='Ability_Rogue_FeignDeath',['Master Management']='INV_Misc_Note_01',Rules='INV_Misc_Book_09'}
 local function makeButton(parent,label,w,h)
  local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate');b:SetWidth(w);b:SetHeight(h);b:SetText(label)
  local icon=icons[label]
@@ -69,9 +69,11 @@ local function create()
   local b=makeButton(window,label,160,29);b:SetPoint('TOPLEFT',window,'TOPLEFT',20+x,-85)
   b:SetScript('OnClick',function() showTab(which) end);tabs[which]=b
  end
- tab('Best Time',0,'board');tab('My Statistics',169,'stats')
+ tab('Best Time',0,'board');tab('Tournament',169,'tournament');tab('My Statistics',338,'stats')
  board=CreateFrame('Frame',nil,window);board:SetPoint('TOPLEFT',window,'TOPLEFT',20,-124);board:SetWidth(730);board:SetHeight(515);backdrop(board,.035,.045,.06,.88)
  stats=CreateFrame('Frame',nil,window);stats:SetAllPoints(board);backdrop(stats,.035,.045,.06,.88)
+ local tournament=CreateFrame('Frame',nil,window);tournament:SetAllPoints(board);backdrop(tournament,.035,.045,.06,.88)
+ local tournamentRefresh=function()end
  local heading=text(board,'TOP 50 RACERS','GameFontNormalLarge',{1,.81,.4});heading:SetPoint('TOPLEFT',16,-12)
  local note=text(board,'OFFICIAL TOP 50','GameFontHighlightSmall',{.75,.77,.78});note:SetPoint('TOPRIGHT',-16,-16)
  local header=CreateFrame('Frame',nil,board);header:SetPoint('TOPLEFT',12,-42);header:SetWidth(706);header:SetHeight(26)
@@ -79,39 +81,57 @@ local function create()
  local headings={{'RANK',12},{'RACER',95},{'BEST TIME',470}}
  for _,h in ipairs(headings) do local label=text(header,h[1],'GameFontNormalSmall',{.98,.78,.4});label:SetPoint('LEFT',h[2],0) end
 
- -- Portraits are captured only from an actual unit with the matching name.
- -- Unknown players retain the neutral silhouette; no fabricated race portrait.
- local portraits={}
+ -- Stable race/gender portraits use only Blizzard's built-in 3.3.5 race atlas.
+ local function portraitData() local d=DB();d.btPortraits=d.btPortraits or {};return d.btPortraits end
  local function racerKey(name) return name and string.lower(name) end
- local function capturePortrait(unit)
+ local function rememberUnit(unit)
   if not UnitExists(unit) or not UnitIsPlayer(unit) then return end
-  local name=UnitName(unit);local key=racerKey(name)
-  if not key then return end
-  local probe=board:CreateTexture(nil,'OVERLAY')
-  SetPortraitTexture(probe,unit)
-  local texture=probe:GetTexture()
-  if texture then
-   local a,b,c,d=probe:GetTexCoord()
-   portraits[key]={texture=texture,coords={a or 0,b or 1,c or 0,d or 1}}
+  local n=UnitName(unit);local key=racerKey(n);if not key then return end
+  local _,race=UnitRace(unit);local sex=UnitSex(unit)
+  if not race or (sex~=2 and sex~=3) then return end
+  local d=portraitData();local item=d[key] or {}
+  item.race=race;item.sex=sex;item.faction=UnitFactionGroup(unit)
+  d[key]=item
+  if MirageRacewayTournament and MirageRacewayTournament.LearnUnit then MirageRacewayTournament:LearnUnit(n,race,sex) end
+ end
+ local function setRacePortrait(texture,name,race,sex)
+  local key=racerKey(name)
+  local d=key and portraitData()[key]
+  if name and UnitName('player') and string.lower(name)==string.lower(UnitName('player')) then
+   local _,pr=UnitRace('player');local ps=UnitSex('player')
+   if pr and (ps==2 or ps==3) then
+    race=pr;sex=ps
+    local pd=portraitData();pd[key]=pd[key] or {};pd[key].race=pr;pd[key].sex=ps
+   end
   end
-  probe:Hide()
+  race=race or (d and d.race)
+  sex=tonumber(sex) or (d and tonumber(d.sex))
+  local raceName=race and tostring(race):gsub('[^%a]','')
+  if raceName and string.lower(raceName)=='scourge' then raceName='Undead' end
+  if raceName and (sex==2 or sex==3) then
+   -- Achievement character icons are ordinary Interface\Icons textures,
+   -- unlike GlueXML character-create textures which may not render in-game.
+   local namePart=string.upper(string.sub(raceName,1,1))..string.lower(string.sub(raceName,2))
+   if string.lower(raceName)=='nightelf' then namePart='Nightelf' end
+   if string.lower(raceName)=='bloodelf' then namePart='Bloodelf' end
+   texture:SetTexture('Interface\\Icons\\Achievement_Character_'..namePart..'_'..(sex==3 and 'Female' or 'Male'))
+   texture:SetTexCoord(0,1,0,1)
+  else
+   texture:SetTexture('Interface\\Icons\\INV_Misc_QuestionMark')
+   texture:SetTexCoord(0,1,0,1)
+  end
  end
  local portraitWatcher=CreateFrame('Frame')
  portraitWatcher:RegisterEvent('PLAYER_TARGET_CHANGED')
- portraitWatcher:RegisterEvent('UNIT_PORTRAIT_UPDATE')
  portraitWatcher:RegisterEvent('PARTY_MEMBERS_CHANGED')
  portraitWatcher:RegisterEvent('RAID_ROSTER_UPDATE')
- portraitWatcher:SetScript('OnEvent',function(self,event,unit)
-  if event=='UNIT_PORTRAIT_UPDATE' then
-   if unit then capturePortrait(unit) end
-  else
-   capturePortrait('target');capturePortrait('player')
-   for i=1,4 do capturePortrait('party'..i) end
-   for i=1,40 do capturePortrait('raid'..i) end
-  end
+ portraitWatcher:RegisterEvent('PLAYER_ENTERING_WORLD')
+ portraitWatcher:SetScript('OnEvent',function()
+  rememberUnit('player');rememberUnit('target')
+  for i=1,4 do rememberUnit('party'..i) end
+  for i=1,40 do rememberUnit('raid'..i) end
   if MirageRacewayBestTimeRefresh then MirageRacewayBestTimeRefresh() end
  end)
-
  local scroll=CreateFrame('ScrollFrame','MirageRacewayLeaderboardScroll',board,'FauxScrollFrameTemplate')
  scroll:SetPoint('TOPLEFT',board,'TOPLEFT',12,-72);scroll:SetPoint('BOTTOMRIGHT',board,'BOTTOMRIGHT',-29,42)
  rows={}
@@ -136,6 +156,7 @@ local function create()
  local empty=text(board,'Loading...','GameFontHighlight',{.83,.85,.87});empty:SetPoint('CENTER',board,'CENTER',0,0)
  local count=text(board,'','GameFontHighlightSmall',{.8,.83,.86});count:SetPoint('BOTTOMLEFT',board,'BOTTOMLEFT',17,14)
  local selected=nil
+ MirageRacewayBestTimeUIState={GetSelectedYear=function()return selected end,GetDemoActive=function()return demoRecords~=nil end}
  local function refreshBoard()
   local sync=MirageRacewaySync
   local cache=sync and selected and sync.cache[selected]
@@ -155,41 +176,19 @@ local function create()
      -- Use the correct team art only when faction is actually known.
      local faction=r.faction
      if not faction and r.name==UnitName('player') then faction=UnitFactionGroup('player') end
+     if not faction and portraitData()[racerKey(r.name)] then faction=portraitData()[racerKey(r.name)].faction end
      if faction=='Horde' or faction=='Alliance' then
       row.fabric:SetTexture('Interface\\AddOns\\MirageRacewayLeaderboard\\Textures\\'..(faction=='Horde' and 'hcloth.tga' or 'acloth.tga'))
-      row.fabric:SetVertexColor(1,1,1,1)
+      row.fabric:SetVertexColor(.82,.82,.82,.92)
       row.teamBadge:SetTexture('Interface\\AddOns\\MirageRacewayLeaderboard\\Textures\\'..(faction=='Horde' and 'goblin.tga' or 'gnome.tga'))
       row.teamBadge:SetVertexColor(1,1,1,1);row.teamBadge:Show();row.badgeBack:Hide()
      else
       row.fabric:SetTexture('Interface\\AddOns\\MirageRacewayLeaderboard\\Textures\\acloth.tga')
-      row.fabric:SetVertexColor(.72,.72,.72,.82)
+      row.fabric:SetVertexColor(.82,.82,.82,.92)
       row.teamBadge:Hide();row.badgeBack:Hide()
      end
-     -- Portraits are unit textures: the player's own portrait is always available.
-     -- Refresh from an actual matching target/group unit when possible.
-     local key=racerKey(r.name)
-     local unit=nil
-     if key==racerKey(UnitName('player')) then unit='player'
-     elseif UnitExists('target') and key==racerKey(UnitName('target')) then unit='target'
-     else
-      for j=1,4 do local u='party'..j;if UnitExists(u) and key==racerKey(UnitName(u)) then unit=u;break end end
-      if not unit then for j=1,40 do local u='raid'..j;if UnitExists(u) and key==racerKey(UnitName(u)) then unit=u;break end end end
-     end
-     if unit then
-      SetPortraitTexture(row.portrait,unit)
-      row.portrait:SetTexCoord(0,1,0,1)
-      capturePortrait(unit)
-      row.portrait:Show()
-     elseif portraits[key] then
-      local saved=portraits[key]
-      row.portrait:SetTexture(saved.texture)
-      row.portrait:SetTexCoord(unpack(saved.coords))
-      row.portrait:Show()
-     else
-      row.portrait:SetTexture('Interface\\Icons\\INV_Misc_QuestionMark')
-      row.portrait:SetTexCoord(0,1,0,1)
-      row.portrait:Show()
-     end
+     setRacePortrait(row.portrait,r.name,r.race,r.sex)
+     row.portrait:Show()
     else row.teamBadge:Hide();row.badgeBack:Hide();row.portrait:Hide();row:Hide() end
   end
   if #list==0 then
@@ -226,6 +225,62 @@ local function create()
   local year=MirageRacewaySync and MirageRacewaySync.ServerYear()
   if year then chooseSeason(year) else selected=nil;refreshBoard() end
  end
+ local tourTitle=text(tournament,'TOURNAMENT - TOP 50','GameFontNormalLarge',{1,.81,.4});tourTitle:SetPoint('TOPLEFT',16,-12)
+ local tourSeason=text(tournament,'','GameFontHighlightSmall',{.75,.77,.78});tourSeason:SetPoint('TOPRIGHT',-16,-16)
+ local tourHead=CreateFrame('Frame',nil,tournament);tourHead:SetPoint('TOPLEFT',12,-42);tourHead:SetWidth(706);tourHead:SetHeight(26)
+ local thbg=tourHead:CreateTexture(nil,'BACKGROUND');thbg:SetAllPoints(tourHead);thbg:SetTexture(0,0,0,.8)
+ for _,h in ipairs({{'RANK',12},{'RACER',95},{'GOLD WON',470}}) do local f=text(tourHead,h[1],'GameFontNormalSmall',{.98,.78,.4});f:SetPoint('LEFT',h[2],0) end
+ local tscroll=CreateFrame('ScrollFrame','MirageRacewayTournamentScroll',tournament,'FauxScrollFrameTemplate')
+ tscroll:SetPoint('TOPLEFT',tournament,'TOPLEFT',12,-72);tscroll:SetPoint('BOTTOMRIGHT',tournament,'BOTTOMRIGHT',-29,42)
+ local trows={}
+ for i=1,6 do
+  local r=CreateFrame('Frame',nil,tournament);r:SetWidth(684);r:SetHeight(60);r:SetPoint('TOPLEFT',tournament,'TOPLEFT',15,-74-(i-1)*63)
+  r.fabric=r:CreateTexture(nil,'ARTWORK');r.fabric:SetAllPoints(r);r.fabric:SetTexCoord(0,1,.08,.92)
+  r.portrait=r:CreateTexture(nil,'OVERLAY');r.portrait:SetWidth(37);r.portrait:SetHeight(37);r.portrait:SetPoint('LEFT',r,'LEFT',46,0)
+  r.rank=text(r,'','GameFontNormal',{1,.8,.35});r.rank:SetPoint('LEFT',9,0)
+  r.name=text(r,'','GameFontHighlight');r.name:SetPoint('LEFT',91,0);r.name:SetWidth(305);r.name:SetJustifyH('LEFT')
+  r.team=r:CreateTexture(nil,'OVERLAY');r.team:SetWidth(34);r.team:SetHeight(34);r.team:SetPoint('LEFT',r,'LEFT',408,0)
+  r.gold=text(r,'','GameFontNormal',{1,.84,.53});r.gold:SetPoint('LEFT',468,0);r.gold:SetWidth(118);r.gold:SetJustifyH('RIGHT')
+  r.coin=r:CreateTexture(nil,'OVERLAY');r.coin:SetTexture('Interface\\Icons\\INV_Misc_Coin_01');r.coin:SetWidth(22);r.coin:SetHeight(22);r.coin:SetPoint('LEFT',r,'LEFT',595,0)
+  trows[i]=r
+ end
+ local tempty=text(tournament,'Loading...','GameFontHighlight');tempty:SetPoint('CENTER',0,0)
+ local tcount=text(tournament,'','GameFontHighlightSmall');tcount:SetPoint('BOTTOMLEFT',17,14)
+ local tselected=nil
+ tournamentRefresh=function()
+  local T=MirageRacewayTournament;local cache=T and tselected and T.cache[tselected];local list=cache and cache.rows or {}
+  FauxScrollFrame_Update(tscroll,#list,6,63)
+  local offset=FauxScrollFrame_GetOffset(tscroll)
+  for i,r in ipairs(trows) do
+   local item=list[i+offset]
+   if item then
+    r:Show();r.rank:SetText(tostring(item.rank or (i+offset)));r.name:SetText(item.name);r.gold:SetText(tostring(item.gold or 0))
+    local faction=item.faction
+    r.fabric:SetTexture('Interface\\AddOns\\MirageRacewayLeaderboard\\Textures\\'..(faction=='Horde' and 'hcloth.tga' or 'acloth.tga'))
+    r.team:SetTexture('Interface\\AddOns\\MirageRacewayLeaderboard\\Textures\\'..(faction=='Horde' and 'goblin.tga' or 'gnome.tga'))
+    if faction~='Horde' and faction~='Alliance' then r.team:Hide() else r.team:Show() end
+    r.fabric:SetVertexColor(.82,.82,.82,.92)
+    setRacePortrait(r.portrait,item.name,item.race,item.sex)
+   else r:Hide() end
+  end
+  if #list==0 then tempty:Show() else tempty:Hide() end;tempty:SetText(cache and 'No Tournament Records Yet' or 'Tournament Unavailable')
+  tcount:SetText('Top '..#list..' racers');tourSeason:SetText(tselected and ('SEASON '..tselected) or 'SERVER DATE UNAVAILABLE')
+ end
+ tscroll:SetScript('OnVerticalScroll',function(self,offset)FauxScrollFrame_OnVerticalScroll(self,offset,63,tournamentRefresh)end)
+ local tseasons=makeButton(tournament,'Season',138,25);tseasons:SetPoint('TOPRIGHT',-14,-7)
+ local function chooseTournamentYear(y)
+  tselected=y;FauxScrollFrame_SetOffset(tscroll,0)
+  if MirageRacewayTournament then MirageRacewayTournament:Open(y) end;tournamentRefresh()
+ end
+ tseasons:SetScript('OnClick',function(self)
+  local y=MirageRacewaySync and MirageRacewaySync.ServerYear();if not y then return end
+  local menu={{text='Select Tournament Season',isTitle=true,notCheckable=true}}
+  for year=y,2026,-1 do local yr=year;menu[#menu+1]={text=tostring(yr),notCheckable=true,func=function()chooseTournamentYear(yr)end} end
+  if not MirageRacewayTournamentSeasonMenu then MirageRacewayTournamentSeasonMenu=CreateFrame('Frame','MirageRacewayTournamentSeasonMenu',UIParent,'UIDropDownMenuTemplate')end
+  EasyMenu(menu,MirageRacewayTournamentSeasonMenu,self,0,0,'MENU')
+ end)
+ MirageRacewayTournamentRefresh=tournamentRefresh
+ tournament:SetScript('OnShow',function()if not tselected then chooseTournamentYear(MirageRacewaySync and MirageRacewaySync.ServerYear())else tournamentRefresh()end end)
  local sTitle=text(stats,'MY RACING STATISTICS','GameFontNormalLarge',{1,.81,.4});sTitle:SetPoint('TOPLEFT',stats,'TOPLEFT',17,-17)
  local banner=stats:CreateTexture(nil,'ARTWORK',nil,-2);banner:SetPoint('TOPLEFT',stats,'TOPLEFT',12,-39);banner:SetWidth(705);banner:SetHeight(64);banner:SetTexCoord(0,1,.08,.92)
  local myPortrait=stats:CreateTexture(nil,'OVERLAY',nil,3);myPortrait:SetWidth(45);myPortrait:SetHeight(45);myPortrait:SetPoint('TOPLEFT',stats,'TOPLEFT',25,-47)
@@ -353,13 +408,13 @@ local function create()
  local reset=makeButton(stats,'Reset Season Best',174,28);reset:SetPoint('TOPLEFT',stats,'TOPLEFT',18,-253)
  StaticPopupDialogs.MRBT_RESET={text='Reset your current Season Best?',button1='Reset',button2='Cancel',OnAccept=function()if MirageRacewaySync then MirageRacewaySync:Reset();refreshStats() end end,timeout=0,whileDead=1,hideOnEscape=1}
  reset:SetScript('OnClick',function()StaticPopup_Show('MRBT_RESET')end)
- refresh=function() refreshBoard();refreshStats() end
+ refresh=function() refreshBoard();refreshStats();tournamentRefresh() end
  showTab=function(which)
-  currentTab=which;if which=='board' then board:Show();stats:Hide() else board:Hide();stats:Show() end
+  currentTab=which;if which=='board' then board:Show() else board:Hide() end;if which=='stats' then stats:Show() else stats:Hide() end;if which=='tournament' then tournament:Show() else tournament:Hide() end
   tabs.board:SetText('Best Time')
-  tabs.stats:SetText('My Statistics')
-  if which=='board' then tabs.board:LockHighlight();tabs.stats:UnlockHighlight()
-  else tabs.stats:LockHighlight();tabs.board:UnlockHighlight() end
+  tabs.stats:SetText('My Statistics');tabs.tournament:SetText('Tournament')
+  for key,b in pairs(tabs) do if key==which then b:LockHighlight() else b:UnlockHighlight() end end
+  if which=='tournament' and MirageRacewayTournament then MirageRacewayTournament:Open() end
   refresh()
  end
  local settings=makeButton(window,'Settings',108,27);settings:SetPoint('BOTTOMLEFT',window,'BOTTOMLEFT',20,16)
@@ -387,14 +442,25 @@ local function create()
  local gitLabel=text(contactWindow,'GitHub Repository (select the link and press Ctrl+C):','GameFontNormal')
  gitLabel:SetPoint('TOPLEFT',22,-131)
  local githubURL='https://github.com/PizzaCompanyCom/Epoch_Mirage_Raceway'
- local git=CreateFrame('EditBox',nil,contactWindow,'InputBoxTemplate')
- git:SetWidth(414);git:SetHeight(26);git:SetPoint('TOPLEFT',30,-152)
+ local gitFrame=CreateFrame('Frame',nil,contactWindow)
+ gitFrame:SetPoint('TOPLEFT',contactWindow,'TOPLEFT',22,-153)
+ gitFrame:SetWidth(426);gitFrame:SetHeight(34)
+ gitFrame:SetFrameLevel(contactWindow:GetFrameLevel()+18)
+ backdrop(gitFrame,.015,.018,.025,1)
+ local git=CreateFrame('EditBox',nil,gitFrame)
+ git:SetPoint('TOPLEFT',gitFrame,'TOPLEFT',9,-5)
+ git:SetWidth(408);git:SetHeight(24)
+ git:SetFontObject('GameFontHighlight')
+ git:SetTextColor(1,.86,.46)
  git:SetAutoFocus(false);git:SetMaxLetters(250);git:SetText(githubURL)
+ git:SetFrameLevel(gitFrame:GetFrameLevel()+3)
+ git:EnableMouse(true)
  git:SetScript('OnEscapePressed',function(self)self:ClearFocus()end)
- git:SetScript('OnEnterPressed',function(self)self:HighlightText();self:SetFocus()end)
+ git:SetScript('OnEnterPressed',function(self)self:HighlightText()end)
  git:SetScript('OnEditFocusLost',function(self)self:SetText(githubURL)end)
- local copy=makeButton(contactWindow,'Copy GitHub Link',175,26)
+ local copy=makeButton(contactWindow,'Select GitHub Link',185,26)
  copy:SetPoint('TOPLEFT',contactWindow,'TOPLEFT',25,-201)
+ copy:SetFrameLevel(contactWindow:GetFrameLevel()+20)
  copy:SetScript('OnClick',function()git:SetText(githubURL);git:SetFocus();git:HighlightText()end)
  local info=text(contactWindow,'Found a bug or have an idea? Please share your feedback on GitHub.','GameFontHighlightSmall')
  info:SetWidth(420);info:SetJustifyH('LEFT');info:SetPoint('TOPLEFT',contactWindow,'TOPLEFT',22,-251)
@@ -493,7 +559,7 @@ local function create()
  minus:SetScript('OnClick',function() local d=DB();d.mainScale=math.max(.7,math.floor(((d.mainScale or 1)-.1)*10+.5)/10);window:SetScale(d.mainScale) end)
  plus:SetScript('OnClick',function() local d=DB();d.mainScale=math.min(1.3,math.floor(((d.mainScale or 1)+.1)*10+.5)/10);window:SetScale(d.mainScale) end)
  showTab('board');window:Hide()
- window:SetScript('OnHide',function() if MirageRacewaySync then MirageRacewaySync:Close() end end)
+ window:SetScript('OnHide',function() if MirageRacewaySync then MirageRacewaySync:Close() end if MirageRacewayTournament then MirageRacewayTournament:Close() end end)
  window:SetScript('OnShow',function()openBoard()end)
  MirageRacewayToggleMainWindow=function()
   if window:IsShown() then window:Hide() else refresh();window:Show() end

@@ -1,0 +1,6 @@
+v1.2.11 - Peer Version Alerts
+- Detect newer Mirage Raceway addon versions used by guild/party/raid members.
+- Update Alerts toggle in Settings (enabled by default).
+- One chat notification per login session; version discovery every five minutes.
+- No external network requests or automatic downloads.
+- Best Time, Tournament, Master Management and SavedVariables preserved.

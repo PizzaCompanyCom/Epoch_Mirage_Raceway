@@ -87,7 +87,7 @@ local function racer(y,n)
 end
 local function top(y)
  local result={};local s=official().seasons[y]
- if s then for _,r in pairs(s.racers) do if valid(r.best) and not r.excluded then result[#result+1]={name=r.name,best=r.best} end end end
+ if s then for _,r in pairs(s.racers) do if valid(r.best) and not r.excluded then result[#result+1]={name=r.name,best=r.best,faction=r.faction,class=r.class,race=r.race,sex=r.sex} end end end
  table.sort(result,function(a,b) if a.best==b.best then return string.lower(a.name)<string.lower(b.name) end return a.best<b.best end)
  while #result>50 do table.remove(result) end
  local rank=0;local previous=nil
@@ -97,16 +97,21 @@ end
 local function notify()
  if type(MirageRacewayBestTimeRefresh)=='function' then MirageRacewayBestTimeRefresh() end
 end
+local outbound={}
+local function queue(msg,to) outbound[#outbound+1]={msg=msg,to=to} end
 local function encode(y,token,to)
  local s=official().seasons[y];local out={'DATA',token,tostring(y),S.session,tostring(s and s.version or 0)}
  local list=top(y)
  -- One addon message per row; bounded packet length; completion only after END.
- send(table.concat(out,'|'),to)
- for i,r in ipairs(list) do send(table.concat({'ROW',token,tostring(i),r.name,tostring(r.best),tostring(r.rank)},'|'),to) end
- send('END|'..token..'|'..#list,to)
+ queue(table.concat(out,'|'),to)
+ for i,r in ipairs(list) do queue(table.concat({'ROW',token,tostring(i),r.name,tostring(r.best),tostring(r.rank),r.faction or '',r.class or '',r.race or '',r.sex or ''},'|'),to) end
+ queue('END|'..token..'|'..#list,to)
 end
 local function push(y)
  local s=seasonData(y);s.version=s.version+1
+ -- The Master must refresh its own Top 50 snapshot after official DB changes.
+ -- Otherwise it keeps displaying the old cache while clients get a CHANGED event.
+ if master() then S.cache[y]={rows=top(y),version=s.version,session=S.session} end
  for who in pairs(S.subscribers) do send('CHANGED|'..tostring(y)..'|'..tostring(s.version)..'|'..S.session,who) end
  notify()
 end
@@ -127,6 +132,10 @@ local function onMaster(sender,a)
   if sy~=y then ack(sender,token,'OLD_SEASON',sy or 0,gen or 0);return end
   if not valid(ms) or not gen or gen<0 or gen~=math.floor(gen) then ack(sender,token,'INVALID_RESULT',sy,gen or 0);return end
   local r=racer(sy,sender)
+  if a[6]=='Alliance' or a[6]=='Horde' then r.faction=a[6] end
+  if a[7] and a[7]~='' then r.class=a[7] end
+  if a[8] and a[8]~='' then r.race=a[8] end
+  if tonumber(a[9])==2 or tonumber(a[9])==3 then r.sex=tonumber(a[9]) end
   if gen<r.generation then ack(sender,token,'OLD_GENERATION',sy,gen);return end
   if gen>r.generation then ack(sender,token,'OLD_GENERATION',sy,gen);return end
   if r.locked then ack(sender,token,'LOCKED',sy,gen);return end
@@ -160,7 +169,7 @@ local function onClient(sender,a)
   S.active.rows={};S.active.session=a[4];S.active.version=tonumber(a[5]) or 0
  elseif op=='ROW' then
   local q=S.active;if not q or q.id~=a[2] or not q.rows then return end
-  local index=tonumber(a[3]);local ms=tonumber(a[5]);if index and index>=1 and index<=50 and valid(ms) then q.rows[index]={name=a[4],best=ms,rank=tonumber(a[6]) or index} end
+  local index=tonumber(a[3]);local ms=tonumber(a[5]);if index and index>=1 and index<=50 and valid(ms) then q.rows[index]={name=a[4],best=ms,rank=tonumber(a[6]) or index,faction=a[7],class=a[8],race=a[9],sex=tonumber(a[10])} end
  elseif op=='END' then
   local q=S.active;if not q or q.id~=a[2] or not q.rows then return end
   local count=tonumber(a[3]);if not count or count<0 or count>50 then return end
@@ -193,11 +202,15 @@ function S:Resync()
   if p.pending and p.pending.year~=y then p.pending=nil end
   if p.reset and p.reset.year~=y then p.reset=nil end
  end
+ if not p.pending and not p.reset and y and p.seasons[y] then
+  p.generation[y]=p.generation[y] or 0
+  p.pending={year=y,generation=p.generation[y],best=p.seasons[y],id=id()}
+ end
  if p.reset then
   local msg=table.concat({'RESET',p.reset.year,p.reset.generation,p.reset.id},'|')
   if master() then onMaster(name(),fields(msg)) else send(msg) end
  elseif p.pending then
-  local msg=table.concat({'RESULT',p.pending.year,p.pending.generation,p.pending.id,p.pending.best},'|')
+  local msg=table.concat({'RESULT',p.pending.year,p.pending.generation,p.pending.id,p.pending.best,UnitFactionGroup('player') or '',select(2,UnitClass('player')) or '',select(2,UnitRace('player')) or '',UnitSex('player') or ''},'|')
   if master() then if serverYear() then onMaster(name(),fields(msg));p.pending=nil end else send(msg) end
  end
  if self.viewOpen and self.selected then self:Request(self.selected,self.selected==y) end
@@ -253,6 +266,7 @@ e:SetScript('OnEvent',function(self,event,...)
   if RegisterAddonMessagePrefix then RegisterAddonMessagePrefix(PREFIX) end
   if master() then
    S.dbValid=validateMaster()
+   personal() -- Migrate legacy personal bests for the Master as well.
    if not S.dbValid then DEFAULT_CHAT_FRAME:AddMessage('|cffff4040[Mirage Raceway] Database Validation Failed|r') end
   else personal();send('HELLO') end
   return
@@ -262,9 +276,13 @@ e:SetScript('OnEvent',function(self,event,...)
  local a=fields(msg)
  if master() then onMaster(sender,a) else onClient(sender,a) end
 end)
-local update=CreateFrame('Frame');local lastYear=nil
+local update=CreateFrame('Frame');local lastYear=nil;local outboundClock=0;local masterSelfSyncClock=0
 update:SetScript('OnUpdate',function(self,dt)
  S.elapsed=S.elapsed+dt;S.heartbeat=S.heartbeat+dt;S.versionCheck=S.versionCheck+dt
+ outboundClock=outboundClock+dt
+ if #outbound>0 and outboundClock>=.06 then
+  outboundClock=0;local packet=table.remove(outbound,1);send(packet.msg,packet.to)
+ end
  local y=serverYear()
  if y and lastYear and y~=lastYear then
   local p=personal();p.pending=nil;p.reset=nil;S.cache[y]=nil
@@ -277,6 +295,47 @@ update:SetScript('OnUpdate',function(self,dt)
   if S.viewOpen then S:Open(y) end
  end
  if y then lastYear=y end
+ -- Reconcile the Master's own season PB against the official database periodically.
+ -- Unlike the old one-shot login import, this also recovers when the server year
+ -- or personal SavedVariables become available after initial login.
+ if master() and S.dbValid~=false and y then
+  masterSelfSyncClock=(masterSelfSyncClock or 0)+dt
+  if masterSelfSyncClock>=15 then
+   masterSelfSyncClock=0
+   local p=personal()
+   local pb=p.seasons[y]
+   if valid(pb) then
+    local current=official().seasons[y]
+    local existing=current and current.racers and current.racers[key(name())]
+    local generation=p.generation[y] or 0
+    -- An older self-reset can remain pending forever because the Master does not
+    -- receive its own ACK through the client handler. Clear it ONLY when the
+    -- official reset generation already matches and the player has a valid
+    -- current-season PB queued at that same generation. Do not clear a newer
+    -- reset request, a locked record, or an excluded record.
+    if p.reset and p.reset.year==y and p.reset.generation==generation
+       and existing and existing.generation==generation
+       and not existing.locked and not existing.excluded
+       and p.pending and p.pending.year==y
+       and p.pending.generation==generation and valid(p.pending.best) then
+     p.reset=nil
+    end
+    if not p.reset and (not existing or (not existing.locked and not existing.excluded and
+        (not existing.generation or existing.generation==generation) and
+        (not valid(existing.best) or pb<existing.best))) then
+     local msg=table.concat({'RESULT',y,generation,id(),pb,UnitFactionGroup('player') or '',select(2,UnitClass('player')) or '',select(2,UnitRace('player')) or '',UnitSex('player') or ''},'|')
+     onMaster(name(),fields(msg))
+     -- Local Master submissions do not go through onClient ACK handling.
+     local updated=official().seasons[y]
+     local record=updated and updated.racers and updated.racers[key(name())]
+     if record and record.generation==generation and valid(record.best) and record.best<=pb
+        and p.pending and p.pending.year==y and p.pending.generation==generation then
+      p.pending=nil
+     end
+    end
+   end
+  end
+ end
  if S.active and S.elapsed>=.25 then
   local q=S.active;q.age=q.age+S.elapsed
   if q.age>=10 then

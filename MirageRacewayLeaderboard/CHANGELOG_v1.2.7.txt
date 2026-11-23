@@ -1,0 +1,6 @@
+v1.2.7 RC — Master self-record reconciliation
+- Resolves stale local reset pending state only when official and personal generations match and a valid same-generation PB is queued.
+- Replays the Master personal season best into an empty official record through the existing validation path.
+- Refreshes official Top 50 cache using the existing push handler.
+- Does not modify other racers, Tournament, locked/excluded records or newer reset requests.
+- Diagnostic version label updated.

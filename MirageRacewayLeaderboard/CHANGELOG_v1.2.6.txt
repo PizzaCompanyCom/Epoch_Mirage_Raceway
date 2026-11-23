@@ -1,0 +1,2 @@
+v1.2.6 Top 50 Trace Diagnostics (read only)
+/mrdiag now traces each official DB record, eligibility, independently computed Top 50, sync cache, UI selected season and demo mode. No saved records modified.

@@ -1,0 +1,6 @@
+Mirage Raceway Best Time v1.2.9 RC
+- Replaces separate racer cloth banners with compact 42px striped table rows in Best Time and Tournament.
+- Adds thin horizontal row dividers and shows up to 9 racers per page with scrolling for Top 50.
+- Adds in-game fallback atlas coordinates for the ten standard WotLK races (male/female), rather than relying only on RACE_ICON_TCOORDS from GlueXML.
+- Always resolves the current player's portrait directly from UnitRace('player') and UnitSex('player'), including Belerda.
+- Preserves existing saved data, seasons, results, and sync protocols.

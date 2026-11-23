@@ -1,0 +1,2 @@
+v1.2.4 Diagnostic Build
+Added /mrdiag read-only diagnostic for missing Master personal record. No changes to synchronization, race data or tournament data.

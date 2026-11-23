@@ -1,0 +1,5 @@
+v1.2.1 RC2
+- Master Belerda imports their own season personal best into the official Top 50 once the server year is verified.
+- Master Management opens as a two-button selector; each section has an independent detail window and Back button.
+- Contacts link uses a high-contrast selectable EditBox with Ctrl+C.
+- Existing Best Time and Tournament records are preserved.

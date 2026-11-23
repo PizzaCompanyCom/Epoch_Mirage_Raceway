@@ -1,0 +1,13 @@
+Mirage Raceway Best Time v1.2.0 — Tournament & Leaderboard Update
+
+- New Tournament tab between Best Time and My Statistics. Top 50, gold-ranked, independent seasonal data.
+- Separate Tournament Management window for Master Belerda: Add Racer, Set Gold, Remove Racer, choose Gnomes/Goblins team.
+- Best Time Master Management remains independent with navigation buttons to switch between management windows.
+- Master snapshots are paced to reduce addon-message bursts and incomplete Top 50 transfers.
+- Personal best is re-submitted on HELLOACK even if previously acknowledged, so Master can restore a missing official racer entry.
+- Best Time snapshots include faction and class metadata for correct offline team/portrait fallback.
+- Player class/faction observations are persisted in SavedVariables; true dynamic unit portraits are only available while the game client has that unit.
+- Tournament uses Master-only writes, a separate protocol and yearly archive; clients receive up to 50 rows.
+- Existing racing HUD, FX, Rules and settings retained.
+
+Known limits: Exact 3D portrait textures cannot be serialized reliably for offline players. Multiplayer synchronization requires Belerda online and all participants using compatible versions; must be tested in-game before public release.

@@ -1,0 +1,1 @@
+v1.2.10 RC — Restored original blue/green public racing banners from v1.2.8; changed only race/gender icon rendering in public boards. New striped column tables in Best Time Management and Tournament Management. No changes to official record storage, sync, or Tournament mechanics.

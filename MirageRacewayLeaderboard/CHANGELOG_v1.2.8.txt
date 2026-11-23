@@ -1,0 +1,6 @@
+v1.2.8 — Race and Gender Portraits
+- Replaced live unit portraits with Blizzard race/gender atlas icons in Best Time and Tournament.
+- Race and gender metadata transmitted in leaderboard rows and race submissions.
+- Master learns Tournament participant race/gender when targeting them.
+- Removed differing banner brightness; consistent tint for all rows.
+- Unknown race/gender shows a question mark until verified; existing records remain unchanged.

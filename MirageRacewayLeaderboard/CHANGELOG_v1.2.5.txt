@@ -1,0 +1,4 @@
+v1.2.5 RC5 — Top 50 Display Fix
+- Master refreshes its official Top 50 cache immediately after each database change.
+- Fixes stale local leaderboard after self-record registration.
+- No change to saved records, Tournament, or administrative restrictions.
