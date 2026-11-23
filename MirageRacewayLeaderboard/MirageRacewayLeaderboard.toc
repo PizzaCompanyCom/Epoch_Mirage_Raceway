@@ -2,7 +2,7 @@
 ## Title: Mirage Raceway Leaderboard
 ## Notes: Race HUD, personal bests and Speed Freeks-style visual effects for Epoch Reborn.
 ## Author: Belerda
-## Version: 1.2.11
+## Version: 1.2.12
 ## SavedVariables: MirageRacewayDB, MirageRacewayInspectorLogs
 MirageRacewaySync.lua
 MirageRacewayTournament.lua

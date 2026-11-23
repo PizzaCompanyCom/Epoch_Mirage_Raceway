@@ -200,6 +200,8 @@ local function create()
  end
  scroll:SetScript('OnVerticalScroll',function(self,offset) FauxScrollFrame_OnVerticalScroll(self,offset,63,refreshBoard) end)
  local seasons=makeButton(board,'Season',138,25);seasons:SetPoint('TOPRIGHT',board,'TOPRIGHT',-14,-7)
+ local boardRefresh=makeButton(board,'Refresh',110,25);boardRefresh:SetPoint('RIGHT',seasons,'LEFT',-7,0)
+ boardRefresh:SetScript('OnClick',function()if MirageRacewaySync then MirageRacewaySync:RefreshNow(selected)end;refreshBoard()end)
  local function chooseSeason(year)
   if not year then return end
   selected=year;FauxScrollFrame_SetOffset(scroll,0)
@@ -268,6 +270,8 @@ local function create()
  end
  tscroll:SetScript('OnVerticalScroll',function(self,offset)FauxScrollFrame_OnVerticalScroll(self,offset,63,tournamentRefresh)end)
  local tseasons=makeButton(tournament,'Season',138,25);tseasons:SetPoint('TOPRIGHT',-14,-7)
+ local tourRefresh=makeButton(tournament,'Refresh',110,25);tourRefresh:SetPoint('RIGHT',tseasons,'LEFT',-7,0)
+ tourRefresh:SetScript('OnClick',function()if MirageRacewayTournament then MirageRacewayTournament:RefreshNow(tselected)end;tournamentRefresh()end)
  local function chooseTournamentYear(y)
   tselected=y;FauxScrollFrame_SetOffset(tscroll,0)
   if MirageRacewayTournament then MirageRacewayTournament:Open(y) end;tournamentRefresh()

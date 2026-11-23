@@ -7,6 +7,9 @@ local PREFIX='MRBT11'
 -- Do not suppress unrelated server/system messages or messages from other addons.
 local lastMasterWhisper=-1000
 local masterOfflineUntil=0
+local lastManualRefresh=-1000
+local initialFetched={}
+local AUTO_CHECK_SECONDS=7200
 local function masterUnavailable(message)
  local m=string.lower(message or '')
  return m:find('belerda',1,true) and (m:find('no player named',1,true) or m:find('not online',1,true) or m:find('not found',1,true) or m:find('currently playing',1,true))
@@ -14,7 +17,7 @@ end
 if type(ChatFrame_AddMessageEventFilter)=='function' then
  ChatFrame_AddMessageEventFilter('CHAT_MSG_SYSTEM',function(_,_,message)
   if GetTime()-lastMasterWhisper<12 and masterUnavailable(message) then
-   masterOfflineUntil=GetTime()+300
+   masterOfflineUntil=GetTime()+AUTO_CHECK_SECONDS
    S.masterOnline=false
    return true
   end
@@ -39,14 +42,21 @@ local function serverYear()
  return year
 end
 S.ServerYear=serverYear
-local function send(msg,to)
- if type(SendAddonMessage)~='function' then return end
- if not to then
-  -- Queue local results while Master is offline; retry discovery at a low rate.
-  if GetTime()<masterOfflineUntil and msg~='HELLO' then return end
-  lastMasterWhisper=GetTime()
- end
- SendAddonMessage(PREFIX,msg,'WHISPER',to or 'Belerda')
+-- All client-to-Master protocols share one offline detector and one error filter.
+function S:SendToMaster(prefix,msg,force)
+ if type(SendAddonMessage)~='function' then return false end
+ if master() then return false end
+ if not force and GetTime()<masterOfflineUntil then return false end
+ lastMasterWhisper=GetTime()
+ SendAddonMessage(prefix,msg,'WHISPER','Belerda')
+ return true
+end
+function S:MasterOffline() return GetTime()<masterOfflineUntil end
+function S:MasterAvailable() masterOfflineUntil=0;self.masterOnline=true end
+local function send(msg,to,force)
+ if type(SendAddonMessage)~='function' then return false end
+ if to then SendAddonMessage(PREFIX,msg,'WHISPER',to);return true end
+ return S:SendToMaster(PREFIX,msg,force)
 end
 local function fields(msg)
  local a={};for x in string.gmatch(msg..'|','(.-)|') do a[#a+1]=x end;return a
@@ -154,6 +164,7 @@ local function onMaster(sender,a)
 end
 local function onClient(sender,a)
  if string.lower(sender or '')~='belerda' then return end
+ S:MasterAvailable()
  local op=a[1]
  if op=='HELLOACK' then masterOfflineUntil=0;S.masterOnline=true;S.masterSession=a[3];S:Resync()
  elseif op=='ACK' then
@@ -179,19 +190,33 @@ local function onClient(sender,a)
   if S.viewOpen and S.selected==tonumber(a[2]) and S.selected==serverYear() then S:Request(S.selected,true) end
  end
 end
-function S:Request(year,subscribe)
+function S:Request(year,subscribe,force)
  if not year then return end
  if not master() and self.selected==serverYear() and year~=self.selected then send('UNSUB') end
  if self.active then self.active=nil end
  self.selected=year;self.seq=self.seq+1
- local token=id();self.active={id=token,year=year,age=0,attempt=1,subscribe=subscribe}
  if master() then self.cache[year]={rows=top(year),version=(official().seasons[year] or {}).version or 0,session=self.session};self.active=nil;notify();return end
- send((subscribe and 'SUB|' or 'GET|')..year..'|'..token)
+ if not force and self:MasterOffline() then self.active=nil;notify();return end
+ local token=id();local msg=(subscribe and 'SUB|' or 'GET|')..year..'|'..token
+ if send(msg,nil,force) then self.active={id=token,year=year,age=0,attempt=1,subscribe=subscribe} else self.active=nil end
  notify()
 end
 function S:Open(year)
  self.viewOpen=true;self.selected=year
- self:Request(year,year==serverYear())
+ -- Switching tabs or revisiting a season uses the current in-memory snapshot.
+ -- The initial discovery and explicit Refresh handle fetching.
+ if master() then self:Request(year,year==serverYear())
+ elseif not initialFetched[year] and not self.cache[year] then
+  initialFetched[year]=true;self:Request(year,year==serverYear())
+ else notify() end
+end
+function S:RefreshNow(year)
+ year=year or self.selected or serverYear()
+ if not year then return false end
+ if not master() and GetTime()-lastManualRefresh<10 then return false end
+ lastManualRefresh=GetTime()
+ self:Request(year,year==serverYear(),true)
+ return true
 end
 function S:Close()
  self.viewOpen=false;self.active=nil;if not master() then send('UNSUB') end
@@ -213,7 +238,7 @@ function S:Resync()
   local msg=table.concat({'RESULT',p.pending.year,p.pending.generation,p.pending.id,p.pending.best,UnitFactionGroup('player') or '',select(2,UnitClass('player')) or '',select(2,UnitRace('player')) or '',UnitSex('player') or ''},'|')
   if master() then if serverYear() then onMaster(name(),fields(msg));p.pending=nil end else send(msg) end
  end
- if self.viewOpen and self.selected then self:Request(self.selected,self.selected==y) end
+ if self.viewOpen and self.selected and not self.cache[self.selected] and not self:MasterOffline() then self:Request(self.selected,self.selected==y) end
 end
 function S:Finish(seconds)
  if master() and S.dbValid==false then return end
@@ -339,11 +364,11 @@ update:SetScript('OnUpdate',function(self,dt)
  if S.active and S.elapsed>=.25 then
   local q=S.active;q.age=q.age+S.elapsed
   if q.age>=10 then
-   if q.attempt==1 then q.attempt=2;q.age=0;q.id=id();q.rows=nil;send((q.subscribe and 'SUB|' or 'GET|')..q.year..'|'..q.id)
+   if q.attempt==1 and not S:MasterOffline() then q.attempt=2;q.age=0;q.id=id();q.rows=nil;send((q.subscribe and 'SUB|' or 'GET|')..q.year..'|'..q.id)
    else S.active=nil;notify() end
   end
  end
- if S.heartbeat>=300 then S.heartbeat=0;if not master() then send('HELLO') end end
- if S.versionCheck>=300 then S.versionCheck=0;if S.viewOpen and S.selected==y then S:Request(y,true) end end
+ if S.heartbeat>=AUTO_CHECK_SECONDS then S.heartbeat=0;if not master() then send('HELLO',nil,true) end end
+ if S.versionCheck>=AUTO_CHECK_SECONDS then S.versionCheck=0;if S.viewOpen and S.selected==y and not master() and not S:MasterOffline() then S:Request(y,true) end end
  S.elapsed=0
 end)

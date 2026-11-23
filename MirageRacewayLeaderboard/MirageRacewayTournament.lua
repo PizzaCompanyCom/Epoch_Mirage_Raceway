@@ -3,6 +3,9 @@
 local T={cache={},pending={},subscribers={},seq=0,selected=nil,viewOpen=false,active=nil,elapsed=0,poll=0}
 MirageRacewayTournament=T
 local PREFIX='MRTO12'
+local AUTO_CHECK_SECONDS=7200
+local lastManualRefresh=-1000
+local initialFetched={}
 local function isMaster()return MirageRacewaySync and MirageRacewaySync:IsMaster()end
 local function year()return MirageRacewaySync and MirageRacewaySync.ServerYear()end
 local function db()local d=MirageRacewayDB or {};d.btTournament=d.btTournament or {seasons={}};d.btTournament.seasons=d.btTournament.seasons or {};return d.btTournament end
@@ -10,9 +13,13 @@ local function season(y)
  local d=db();d.seasons[y]=d.seasons[y] or {racers={},version=0};return d.seasons[y]
 end
 local function validName(n)return type(n)=='string' and #n>=2 and #n<=24 and n:match('^[%a]+$')~=nil end
-local function send(msg,to)
- if not SendAddonMessage then return end
- SendAddonMessage(PREFIX,msg,'WHISPER',to or 'Belerda')
+local function send(msg,to,force)
+ if not SendAddonMessage then return false end
+ if to then SendAddonMessage(PREFIX,msg,'WHISPER',to);return true end
+ if MirageRacewaySync and MirageRacewaySync.SendToMaster then
+  return MirageRacewaySync:SendToMaster(PREFIX,msg,force)
+ end
+ return false
 end
 local function split(s)local a={};for x in string.gmatch((s or '')..'|','(.-)|')do a[#a+1]=x end;return a end
 local function token()T.seq=T.seq+1;return (UnitName('player') or 'unknown')..'-'..math.floor(GetTime()*1000)..'-'..T.seq end
@@ -63,15 +70,28 @@ function T:LearnUnit(n,race,sex)
  local d=season(year());local r=d.racers[string.lower(n)]
  if r and (r.race~=race or r.sex~=sex) then r.race=race;r.sex=sex;changed(year()) end
 end
-function T:Request(y)
+function T:Request(y,force)
  if not y or y<2026 or not year() or y>year()then return end
  self.selected=y
  if isMaster()then local d=db().seasons[y];self.cache[y]={rows=list(y),version=d and d.version or 0};self.active=nil;notify();return end
- local id=token();self.active={id=id,year=y,rows=nil,age=0,retries=0}
- send('GET|'..y..'|'..id..'|'..(y==year() and '1' or '0'))
+ if not force and MirageRacewaySync and MirageRacewaySync:MasterOffline() then self.active=nil;notify();return end
+ local id=token();local msg='GET|'..y..'|'..id..'|'..(y==year() and '1' or '0')
+ if send(msg,nil,force) then self.active={id=id,year=y,rows=nil,age=0,retries=0} else self.active=nil end
  notify()
 end
-function T:Open(y)self.viewOpen=true;self:Request(y or self.selected or year())end
+function T:Open(y)
+ self.viewOpen=true;self.selected=y or self.selected or year()
+ if isMaster() then self:Request(self.selected)
+ elseif self.selected and not initialFetched[self.selected] and not self.cache[self.selected] then
+  initialFetched[self.selected]=true;self:Request(self.selected)
+ else notify() end
+end
+function T:RefreshNow(y)
+ y=y or self.selected or year()
+ if not y then return false end
+ if not isMaster() and GetTime()-lastManualRefresh<10 then return false end
+ lastManualRefresh=GetTime();self:Request(y,true);return true
+end
 function T:Close()self.viewOpen=false;self.active=nil;if not isMaster()then send('UNSUB')end end
 local events=CreateFrame('Frame');events:RegisterEvent('PLAYER_LOGIN');events:RegisterEvent('CHAT_MSG_ADDON')
 events:SetScript('OnEvent',function(_,event,...)
@@ -87,6 +107,7 @@ events:SetScript('OnEvent',function(_,event,...)
   elseif op=='UNSUB'then T.subscribers[sender]=nil end
  else
   if string.lower(sender)~='belerda'then return end
+  if MirageRacewaySync and MirageRacewaySync.MasterAvailable then MirageRacewaySync:MasterAvailable() end
   if op=='DATA'then local q=T.active;if not q or q.id~=a[2] or q.year~=tonumber(a[3])then return end;q.rows={};q.version=tonumber(a[4]) or 0
   elseif op=='ROW'then
    local q=T.active;if not q or not q.rows or q.id~=a[2]then return end
@@ -108,10 +129,10 @@ local updater=CreateFrame('Frame');local outboundClock=0;updater:SetScript('OnUp
   T.active.age=T.active.age+T.elapsed
   if T.active.age>10 then
    local q=T.active
-   if q.retries==0 then q.retries=1;q.age=0;q.id=token();q.rows=nil;send('GET|'..q.year..'|'..q.id..'|'..(q.year==year() and '1' or '0'))
+   if q.retries==0 and not (MirageRacewaySync and MirageRacewaySync:MasterOffline()) then q.retries=1;q.age=0;q.id=token();q.rows=nil;send('GET|'..q.year..'|'..q.id..'|'..(q.year==year() and '1' or '0'))
    else T.active=nil;notify()end
   end
  end
- if T.poll>=300 then T.poll=0;if T.viewOpen and T.selected==year()then T:Request(T.selected)end end
+ if T.poll>=AUTO_CHECK_SECONDS then T.poll=0;if T.viewOpen and T.selected==year()then T:Request(T.selected)end end
  T.elapsed=0
 end)

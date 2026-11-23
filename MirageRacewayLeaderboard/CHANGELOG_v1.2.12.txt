@@ -1,0 +1,8 @@
+v1.2.12 — Manual Refresh & Quiet Synchronization
+- Refresh buttons beside Season in Best Time and Tournament.
+- Switching tabs displays cached data without requesting it again.
+- Automatic polling and Master discovery interval: 120 minutes.
+- Master change notifications continue to update active subscribers.
+- Shared targeted offline-Master system-message filter for both protocols.
+- Manual Refresh has a 10-second anti-spam cooldown.
+- Personal best submission and local pending records retained.
